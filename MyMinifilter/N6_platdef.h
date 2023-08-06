@@ -1,0 +1,56 @@
+#ifndef __INC_N6C_PLTFMDEF_H
+#define __INC_N6C_PLTFMDEF_H
+#include <ntdef.h>
+typedef UCHAR		u1Byte, * pu1Byte;
+typedef USHORT		u2Byte, * pu2Byte;
+typedef ULONG		u4Byte, * pu4Byte;
+typedef ULONGLONG	u8Byte, * pu8Byte;
+
+
+typedef enum _KC_STATUS {
+	KC_STATUS_SUCCESS = 0,
+	KC_STATUS_FAILURE,
+	KC_STATUS_PENDING,
+	KC_STATUS_RESOURCE,
+	KC_STATUS_INVALID_CONTEXT,
+	KC_STATUS_INVALID_PARAMETER,
+	KC_STATUS_NOT_SUPPORT,
+	KC_STATUS_OS_API_FAILED,
+	KC_STATUS_BUFFER_TOO_SHORT,
+	KC_STATUS_INVALID_LENGTH,
+	KC_STATUS_NOT_RECOGNIZED,
+	KC_STATUS_MALFORMED_PKT,
+	KC_STATUS_PKT_DROP,
+	KC_STATUS_MEDIA_BUSY,
+	KC_STATUS_INVALID_DATA,
+	KC_STATUS_INVALID_STATE,
+	KC_STATUS_IO_EXCEPTION,
+	KC_STATUS_RUNNING_LEVEL_TOO_HIGH,
+	KC_STATUS_CURRENTLY_NOT_HANDLE,
+}KC_STATUS, * PKC_STATUS;
+
+
+u4Byte
+GenTag(
+	IN	char* pFunName
+);
+
+KC_STATUS
+PlatformAllocateMemoryWithTag(
+	IN  u4Byte      Tag,
+	OUT	PVOID* pPtr,
+	IN	u4Byte		length
+);
+
+VOID
+PlatformFreeMemory(
+	IN	PVOID		ptr,
+	IN	u4Byte		length
+);
+
+VOID
+PlatformZeroMemory(
+	IN	PVOID		ptr,
+	IN	u4Byte		length
+);
+#endif
