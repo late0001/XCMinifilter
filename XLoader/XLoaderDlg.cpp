@@ -421,10 +421,10 @@ BOOL loadDriver(TCHAR* lpszSvrName)
 		//{
 			if (_ZwLoadDriver(&uStr) == STATUS_SUCCESS)
 			{
-				_RtlFreeUnicodeString(&uStr);
+				//_RtlFreeUnicodeString(&uStr);
 				return TRUE;
 			}
-			_RtlFreeUnicodeString(&uStr);
+			//_RtlFreeUnicodeString(&uStr);
 		//}
 	}
 
@@ -492,10 +492,10 @@ BOOL unloadDriver(TCHAR* lpszSvrName)
 
 		if (_ZwUnloadDriver(&uStr) == STATUS_SUCCESS)
 		{
-			_RtlFreeUnicodeString(&uStr);
+			//_RtlFreeUnicodeString(&uStr);
 			return TRUE;
 		}
-		_RtlFreeUnicodeString(&uStr);
+		//_RtlFreeUnicodeString(&uStr);
 	}
 
 	return FALSE;
@@ -1090,7 +1090,7 @@ void uninstallDriver(void)
 					StatusPrintf(_T("Support driver successfully unloaded. "));
 				else
 					//printf("Unload support driver failed.  It is probably not loaded. ");
-					AfxMessageBox(_T("Unload support driver failed.  It is probably not loaded. "));
+					StatusPrintf(_T("Unload support driver failed.  It is probably not loaded or already unloaded. "));
 			}
 		}
 		cleanupDriver(lpszDriverPath, svrName);
@@ -1128,8 +1128,11 @@ void CXLoaderDlg::OnBnClickedLoadsys()
 	TCHAR lpszDriverPath[MAX_PATH] = { 0 };
 	GetDlgItemTextW(IDC_EDT_IMAGEPATH, lpszDriverPath, MAX_PATH);
 	CString strPath = lpszDriverPath;
-	if (strPath.IsEmpty())
+	if (strPath.IsEmpty()){
 		AfxMessageBox(L"Please select sys file path for install drivers");
+		return;
+	}
+		
 	installDriver();
 }
 
@@ -1139,7 +1142,10 @@ void CXLoaderDlg::OnBnClickedBtnUnloadsys()
 	TCHAR lpszDriverPath[MAX_PATH] = { 0 };
 	GetDlgItemTextW(IDC_EDT_IMAGEPATH, lpszDriverPath, MAX_PATH);
 	CString strPath = lpszDriverPath;
-	if (strPath.IsEmpty())
+	if (strPath.IsEmpty()) {
 		AfxMessageBox(L"Please select sys file path for unstall drivers");
+		return;
+	}
+		
 	uninstallDriver();
 }

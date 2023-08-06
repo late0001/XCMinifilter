@@ -209,8 +209,92 @@ __in PUNICODE_STRING RegistryPath//PUNICODE_STRING ƒ⁄∫À◊÷∑˚¥Æ ˝◊È£¨«˝∂Ø“‘∑˛ŒÒµƒ–
 	return status;
 }
 
-
-
+ULONG FltFilterOperationsOffset = 0x1a8; //WIN11 OFFSET of fltmgr!_FLT_FILTER->PFLT_OPERATION_REGISTRATION
+ULONG EnumMiniFilter()
+{
+	long  ntStatus;
+	ULONG  uNumber;
+	PVOID  pBuffer = NULL;
+	ULONG  uIndex = 0, DrvCount = 0;
+	PVOID  pCallBacks = NULL, pFilter = NULL;
+	PFLT_OPERATION_REGISTRATION pNode;
+	do
+	{
+		if (pBuffer != NULL)
+		{
+			ExFreePool(pBuffer);
+			pBuffer = NULL;
+		}
+		ntStatus = FltEnumerateFilters(NULL, 0, &uNumber);
+		if (ntStatus != STATUS_BUFFER_TOO_SMALL)
+			break;
+		pBuffer = ExAllocatePoolWithTag(NonPagedPool, sizeof(PFLT_FILTER) * uNumber, 'mnft');
+		if (pBuffer == NULL)
+		{
+			RT_TRACE(COMP_INIT, DBG_SERIOUS, (" %s(%d)ExAllocatePoolWithTag failed!\n",__FUNCTION__ ,__LINE__));
+			ntStatus = STATUS_INSUFFICIENT_RESOURCES;
+			break;
+		}
+		ntStatus = FltEnumerateFilters(pBuffer, uNumber, &uNumber);
+	} while (ntStatus == STATUS_BUFFER_TOO_SMALL);
+	if (!NT_SUCCESS(ntStatus))
+	{
+		if (pBuffer != NULL)
+			ExFreePool(pBuffer);
+		return 0;
+	}
+	RT_TRACE(COMP_INIT, DBG_LOUD,  ("MiniFilter Count: %ld\n", uNumber));
+	RT_TRACE(COMP_INIT, DBG_LOUD, ("------\n"));
+	__try
+	{
+		while (DrvCount < uNumber)
+		{
+			pFilter = (PVOID)(*(PULONG64)((PUCHAR)pBuffer + DrvCount * 8));
+			pCallBacks = (PVOID)((PUCHAR)pFilter + FltFilterOperationsOffset);
+			pNode = (PFLT_OPERATION_REGISTRATION)(*(PULONG64)pCallBacks);
+			__try
+			{
+				while (pNode->MajorFunction != 0x80)  //IRP_MJ_OPERATION_END
+				{
+					if (pNode->MajorFunction < 28)  //MajorFunction id is 0~27
+					{
+						RT_TRACE(COMP_INIT, DBG_LOUD, ("Object=%p\tPreFunc=%p\tPostFunc=%p\tIRP=%d\n",
+							pFilter,
+							pNode->PreOperation,
+							pNode->PostOperation,
+							pNode->MajorFunction));
+					}
+					pNode++;
+				}
+			}
+			__except (EXCEPTION_EXECUTE_HANDLER)
+			{
+				FltObjectDereference(pFilter);
+				RT_TRACE(COMP_INIT, DBG_LOUD, ("[EnumMiniFilter] EXCEPTION_EXECUTE_HANDLER: pNode->MajorFunction\n"));
+				ntStatus = GetExceptionCode();
+				ExFreePool(pBuffer);
+				return uIndex;
+			}
+			DrvCount++;
+			FltObjectDereference(pFilter);
+			RT_TRACE(COMP_INIT, DBG_LOUD, ("------\n"));
+		}
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		FltObjectDereference(pFilter);
+		RT_TRACE(COMP_INIT, DBG_LOUD, ("[EnumMiniFilter] EXCEPTION_EXECUTE_HANDLER\n"));
+		ntStatus = GetExceptionCode();
+		ExFreePool(pBuffer);
+		return uIndex;
+	}
+	if (pBuffer != NULL)
+	{
+		ExFreePool(pBuffer);
+		ntStatus = STATUS_SUCCESS;
+	}
+	return uIndex;
+}
 
 
 
@@ -342,17 +426,18 @@ __out PULONG ReturnOutputBufferLength
 	PAGED_CODE();
 	//∑÷≈‰ƒ⁄¥Ê£¨¥Ê¥¢◊÷∑˚¥Æ£¨”√”⁄∫Õ”¶”√≤„◊÷∑˚¥Æ±»Ωœ
 	PVOID test;
+	PVOID test2;
+	PVOID test3;
 	test = ExAllocatePool(PagedPool, 10);
 	RtlCopyMemory(test, L"0", wcslen(L"0"));
-	PVOID test2;
+	
 	test2 = ExAllocatePool(PagedPool, 50);
 	RtlCopyMemory(test2, L"52pojie", wcslen(L"52pojie"));
-
-
+	
 	UNREFERENCED_PARAMETER(ConnectionCookie);
 	UNREFERENCED_PARAMETER(OutputBufferSize);
 	UNREFERENCED_PARAMETER(OutputBuffer);
-	RT_TRACE(COMP_INIT, DBG_LOUD, ("NPMiniMessage() Input:%s \n", InputBuffer));
+	RT_TRACE(COMP_INIT, DBG_LOUD, ("NPMiniMessage() Input:%ws \n", InputBuffer));
 	//Õ®π˝”¶”√≤„ ‰»Îµƒ◊÷∑˚¥Æ£¨¿¥œ‘ æœ‡”¶µƒŒƒ±æ
 	if (wcscmp(InputBuffer, test) == 0)
 	{
@@ -362,12 +447,20 @@ __out PULONG ReturnOutputBufferLength
 	{
 		command = 2;
 	}
+	else if (wcsncmp(InputBuffer, L"EnumFilter", wcslen(L"EnumFilter")) == 0)
+	{
+		command = 3;
+	}
 	else
 	{
 		status = STATUS_INVALID_PARAMETER;
 
 	}
 	RT_TRACE(COMP_INIT, DBG_LOUD, ("NPMiniMessage() command:%d \n", command));
+	
+	if (command == 3)
+		EnumMiniFilter();
+
 	//œÚŒƒº˛–¥»Î£¨¿¥¥•∑¢read£¨”…”⁄–Ë“™ƒ⁄»›≤ªÕ¨£¨À˘“‘Õ®π˝∏ƒ±‰ONOROFF£¨ µœ÷¡Ω÷÷–¥»Î“¿¥Œ÷¥––
 	if (ONOROFF == 0)
 	{
